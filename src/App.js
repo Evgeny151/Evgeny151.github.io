@@ -3,14 +3,15 @@ import { Spin } from 'antd';
 import axios from 'axios';
 
 import { QuestionCard } from './QuestionCard/QuestionCard';
+import { Statistics } from './Statistics/Statistics';
 import 'antd/dist/antd.css'
 import './App.css';
 
 export function App() {
-  const [results, setResults] = useState([])
+  const [questionList, setQuestionList] = useState([])
   const [loadingStatus, setLoadingStatus] = useState('idle')
   
-  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [score, setScore] = useState(0)
   const [showScore, setShowScore] = useState(false)
   const [scoreInfo, setScoreInfo] = useState([])
@@ -20,26 +21,27 @@ export function App() {
     hard: 0
   })
 
-  const loadQuestions = async () => {
+  const loadQuestions = () => {
     setLoadingStatus('pending')
-    await axios('https://opentdb.com/api.php?amount=5')
+
+    axios('https://opentdb.com/api.php?amount=5')
       .then(response => {
         const data = response.data.results.map(item => {
-          const fullRandomAnswers = [ ...item.incorrect_answers, item.correct_answer ]
+          const allAnswersInRandomOrder = [ ...item.incorrect_answers, item.correct_answer ]
             .sort(() => Math.round(Math.random() * 100) - 50)
+          delete item['incorrect_answers']
           return {
             ...item,
-            incorrect_answers: fullRandomAnswers,
+            allAnswers: allAnswersInRandomOrder,
             question: item.question.replace(/&quot;/g,'"')
           }
         });
 
-        setResults(data)
+        setQuestionList(data)
         setLoadingStatus('fulfilled')
       })
       .catch(error => {
-        setLoadingStatus('rejected')
-        console.log('error', error)
+        alert('Error: ' + error)
       })
   }
 
@@ -47,19 +49,25 @@ export function App() {
     loadQuestions()
   }, [])
 
-  useEffect(() => {
-    if (scoreInfo.length) {
-      if (scoreInfo[currentQuestion - 1].correct_answer === scoreInfo[currentQuestion - 1].selectedAnswer) {
-        let newScore = score + 1
-        setScore(newScore)
-
-        setStatistics({
-          ...statistics,
-          [scoreInfo[currentQuestion - 1].difficulty]: statistics[scoreInfo[currentQuestion - 1].difficulty] + 1
-        })
+  const calculateStatistics = () => {
+    const { newScore, newStatistics } = scoreInfo.reduce((acc, {correct_answer, selectedAnswer, difficulty}) => {
+      if (correct_answer === selectedAnswer) {
+        acc.newScore += 1
+        acc.newStatistics = {
+          ...acc.newStatistics,
+          [difficulty]: acc.newStatistics[difficulty] + 1
+        }
+        return acc
       }
-    }
-  }, [scoreInfo])
+      return acc
+    },{
+        newScore: 0,
+        newStatistics: { easy: 0, medium: 0, hard: 0 }
+      })
+
+    setScore(newScore)
+    setStatistics(newStatistics)
+  }
 
   const handleAnswerClick = (e) => {
     setScoreInfo((prev) => {
@@ -67,18 +75,19 @@ export function App() {
           ...prev,
           {
             selectedAnswer: e.target.value,
-            correct_answer: results[currentQuestion].correct_answer,
-            difficulty: results[currentQuestion].difficulty
+            correct_answer: questionList[currentQuestionIndex].correct_answer,
+            difficulty: questionList[currentQuestionIndex].difficulty
           }
         ]
 
     })
 
-    const nextQuestion = currentQuestion + 1
+    const nextQuestion = currentQuestionIndex + 1
     
-    if (nextQuestion < results.length) {
-      setCurrentQuestion(nextQuestion)
+    if (nextQuestion < questionList.length) {
+      setCurrentQuestionIndex(nextQuestion)
     } else {
+      calculateStatistics()
       setShowScore(true)
     }
 
@@ -86,7 +95,7 @@ export function App() {
 
   const onHandleTryAgainClick = () => {
     loadQuestions()
-    setCurrentQuestion(0)
+    setCurrentQuestionIndex(0)
     setShowScore(false)
     setScoreInfo([])
     setScore(0)
@@ -97,20 +106,34 @@ export function App() {
     })
   }
 
+  const ROOT_CLASS = 'quiz-card'
   return (
     <div className="App">
-      { loadingStatus === 'pending' && <Spin tip="Загрузка вопросов..." /> }
+      { loadingStatus === 'pending' && <Spin /> }
       { loadingStatus === 'fulfilled' &&
-        <QuestionCard
-          questions={results}
-          currentQuestion={currentQuestion}
-          questionsCount={results.length}
-          onChange={handleAnswerClick}
-          showScore={showScore}
-          score={score}
-          onHandleTryAgainClick={onHandleTryAgainClick}
-          statistics={statistics}
-        />
+        <div className={ROOT_CLASS}>
+          {
+            !showScore ?
+              <QuestionCard
+                rootClass={ROOT_CLASS}
+                questions={questionList}
+                currentQuestionIndex={currentQuestionIndex}
+                questionsCount={questionList.length}
+                onChange={handleAnswerClick}
+                showScore={showScore}
+                score={score}
+                onHandleTryAgainClick={onHandleTryAgainClick}
+                statistics={statistics}
+              />
+              :
+              <Statistics
+                rootClass={ROOT_CLASS}
+                score={score}
+                statistics={statistics}
+                onHandleTryAgainClick={onHandleTryAgainClick}
+              />
+          }
+        </div>
       }
     </div>
   );

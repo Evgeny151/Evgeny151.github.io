@@ -1,7 +1,20 @@
-.question-card {
-    background-color: #252d4a;
-    width: 450px;
-    min-height: 200px;
-    border-radius: 15px;
-    padding: 20px;
+.quiz-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quiz-card__answers {
+    display: flex !important;
+    flex-direction: column;
+    height: 60%;
+    justify-content: space-evenly;
+}
+
+.quiz-card__text {
+    font-size: 20px;
+}
+
+.ant-btn {
+    background-color: #252d4a !important;
 }

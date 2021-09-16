@@ -6,3 +6,12 @@
   justify-content: center;
   align-items: center;
 }
+
+.quiz-card {
+  background-color: #252d4a;
+  width: 650px;
+  min-height: 300px;
+  border-radius: 15px;
+  padding: 20px;
+  font-size: 30px;
+}
